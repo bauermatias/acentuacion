@@ -1,0 +1,398 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Juego de Acentuación</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&family=Poppins:wght@700&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+        }
+        .title-font {
+            font-family: 'Poppins', sans-serif;
+        }
+        .feedback-icon {
+            width: 80px;
+            height: 80px;
+            animation: pop-in 0.5s cubic-bezier(0.68, -0.55, 0.27, 1.55);
+        }
+        @keyframes pop-in {
+            0% { transform: scale(0); opacity: 0; }
+            100% { transform: scale(1); opacity: 1; }
+        }
+        .btn {
+            transition: all 0.2s ease-in-out;
+        }
+        .btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 10px rgba(0,0,0,0.1);
+        }
+    </style>
+</head>
+<body class="bg-gray-100 flex items-center justify-center min-h-screen p-4">
+
+    <div class="w-full max-w-2xl mx-auto">
+        
+        <!-- Pantalla de Selección de Modo -->
+        <div id="menu-screen" class="text-center bg-white p-8 rounded-2xl shadow-xl">
+            <h1 class="text-4xl md:text-5xl font-bold text-gray-800 title-font mb-2">¡A Practicar Acentos!</h1>
+            <p class="text-gray-600 mb-8 text-lg">Elige un modo de juego para comenzar.</p>
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <!-- Modo 1: Escribir la palabra -->
+                <div class="bg-blue-50 p-6 rounded-xl border-2 border-blue-200">
+                    <h2 class="text-2xl font-bold text-blue-800 mb-3">Modo 1: Acentuar</h2>
+                    <p class="text-blue-700 mb-6">Te daré una palabra sin tilde. ¡Escríbela correctamente!</p>
+                    <button onclick="startGame(1)" class="btn w-full bg-blue-500 text-white font-bold py-3 px-6 rounded-lg text-lg hover:bg-blue-600">Jugar a Acentuar</button>
+                </div>
+                <!-- Modo 2: Clasificar la palabra -->
+                <div class="bg-green-50 p-6 rounded-xl border-2 border-green-200">
+                    <h2 class="text-2xl font-bold text-green-800 mb-3">Modo 2: Clasificar</h2>
+                    <p class="text-green-700 mb-6">Te daré una palabra con tilde. ¡Dime qué tipo es!</p>
+                    <button onclick="startGame(2)" class="btn w-full bg-green-500 text-white font-bold py-3 px-6 rounded-lg text-lg hover:bg-green-600">Jugar a Clasificar</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Pantalla de Juego -->
+        <div id="game-screen" class="hidden">
+            <div class="bg-white p-8 rounded-2xl shadow-xl text-center">
+                <p class="text-gray-500 mb-2" id="game-mode-title"></p>
+                <p class="text-5xl md:text-6xl font-bold text-gray-800 mb-8" id="word-display"></p>
+                
+                <!-- Contenedor para los inputs de cada modo -->
+                <div id="input-container" class="mb-6"></div>
+
+                <!-- Contenedor para la retroalimentación -->
+                <div id="feedback-container" class="min-h-[150px] flex flex-col items-center justify-center"></div>
+                
+                <!-- Botones de navegación -->
+                <div class="mt-8 flex flex-col sm:flex-row justify-center gap-4">
+                    <button id="next-word-btn" onclick="nextWord()" class="btn w-full sm:w-auto hidden bg-indigo-500 text-white font-bold py-3 px-8 rounded-lg text-lg hover:bg-indigo-600">Siguiente</button>
+                    <button onclick="showMenu()" class="btn w-full sm:w-auto bg-gray-300 text-gray-800 font-bold py-3 px-8 rounded-lg text-lg hover:bg-gray-400">Volver al Menú</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // --- BASE DE DATOS DE PALABRAS ---
+        // Una lista completa con casi 200 palabras para practicar.
+        const palabras = [
+            { palabra: "cancion", acentuada: "canción", tipo: "aguda", regla: "Aguda: Llevan tilde porque terminan en 'n'." },
+            { palabra: "arbol", acentuada: "árbol", tipo: "grave", regla: "Grave: Llevan tilde porque NO terminan en 'n', 's' o vocal." },
+            { palabra: "musica", acentuada: "música", tipo: "esdrújula", regla: "Esdrújula: Siempre llevan tilde." },
+            { palabra: "sofa", acentuada: "sofá", tipo: "aguda", regla: "Aguda: Llevan tilde porque terminan en vocal." },
+            { palabra: "lapiz", acentuada: "lápiz", tipo: "grave", regla: "Grave: Llevan tilde porque NO terminan en 'n', 's' o vocal." },
+            { palabra: "telefono", acentuada: "teléfono", tipo: "esdrújula", regla: "Esdrújula: Siempre llevan tilde." },
+            { palabra: "compas", acentuada: "compás", tipo: "aguda", regla: "Aguda: Llevan tilde porque terminan en 's'." },
+            { palabra: "dificil", acentuada: "difícil", tipo: "grave", regla: "Grave: Llevan tilde porque NO terminan en 'n', 's' o vocal." },
+            { palabra: "pajaro", acentuada: "pájaro", tipo: "esdrújula", regla: "Esdrújula: Siempre llevan tilde." },
+            { palabra: "corazon", acentuada: "corazón", tipo: "aguda", regla: "Aguda: Llevan tilde porque terminan en 'n'." },
+            { palabra: "cesped", acentuada: "césped", tipo: "grave", regla: "Grave: Llevan tilde porque NO terminan en 'n', 's' o vocal." },
+            { palabra: "brujula", acentuada: "brújula", tipo: "esdrújula", regla: "Esdrújula: Siempre llevan tilde." },
+            { palabra: "cafe", acentuada: "café", tipo: "aguda", regla: "Aguda: Llevan tilde porque terminan en vocal." },
+            { palabra: "azucar", acentuada: "azúcar", tipo: "grave", regla: "Grave: Llevan tilde porque NO terminan en 'n', 's' o vocal." },
+            { palabra: "rapido", acentuada: "rápido", tipo: "esdrújula", regla: "Esdrújula: Siempre llevan tilde." },
+            { palabra: "jamas", acentuada: "jamás", tipo: "aguda", regla: "Aguda: Llevan tilde porque terminan en 's'." },
+            { palabra: "caracter", acentuada: "carácter", tipo: "grave", regla: "Grave: Llevan tilde porque NO terminan en 'n', 's' o vocal." },
+            { palabra: "oxigeno", acentuada: "oxígeno", tipo: "esdrújula", regla: "Esdrújula: Siempre llevan tilde." },
+            { palabra: "avion", acentuada: "avión", tipo: "aguda", regla: "Aguda: Llevan tilde porque terminan en 'n'." },
+            { palabra: "facil", acentuada: "fácil", tipo: "grave", regla: "Grave: Llevan tilde porque NO terminan en 'n', 's' o vocal." },
+            { palabra: "platano", acentuada: "plátano", tipo: "esdrújula", regla: "Esdrújula: Siempre llevan tilde." },
+            { palabra: "ademas", acentuada: "además", tipo: "aguda", regla: "Aguda: Llevan tilde porque terminan en 's'." },
+            { palabra: "habil", acentuada: "hábil", tipo: "grave", regla: "Grave: Llevan tilde porque NO terminan en 'n', 's' o vocal." },
+            { palabra: "america", acentuada: "América", tipo: "esdrújula", regla: "Esdrújula: Siempre llevan tilde." },
+            { palabra: "ingles", acentuada: "inglés", tipo: "aguda", regla: "Aguda: Llevan tilde porque terminan en 's'." },
+            { palabra: "debil", acentuada: "débil", tipo: "grave", regla: "Grave: Llevan tilde porque NO terminan en 'n', 's' o vocal." },
+            { palabra: "murcielago", acentuada: "murciélago", tipo: "esdrújula", regla: "Esdrújula: Siempre llevan tilde." },
+            { palabra: "camion", acentuada: "camión", tipo: "aguda", regla: "Aguda: Llevan tilde porque terminan en 'n'." },
+            { palabra: "tunel", acentuada: "túnel", tipo: "grave", regla: "Grave: Llevan tilde porque NO terminan en 'n', 's' o vocal." },
+            { palabra: "matematicas", acentuada: "matemáticas", tipo: "esdrújula", regla: "Esdrújula: Siempre llevan tilde." },
+            { palabra: "peru", acentuada: "Perú", tipo: "aguda", regla: "Aguda: Llevan tilde porque terminan en vocal." },
+            { palabra: "marmol", acentuada: "mármol", tipo: "grave", regla: "Grave: Llevan tilde porque NO terminan en 'n', 's' o vocal." },
+            { palabra: "esdrujula", acentuada: "esdrújula", tipo: "esdrújula", regla: "Esdrújula: Siempre llevan tilde." },
+            { palabra: "bebe", acentuada: "bebé", tipo: "aguda", regla: "Aguda: Llevan tilde porque terminan en vocal." },
+            { palabra: "angel", acentuada: "ángel", tipo: "grave", regla: "Grave: Llevan tilde porque NO terminan en 'n', 's' o vocal." },
+            { palabra: "higado", acentuada: "hígado", tipo: "esdrújula", regla: "Esdrújula: Siempre llevan tilde." },
+            { palabra: "tambien", acentuada: "también", tipo: "aguda", regla: "Aguda: Llevan tilde porque terminan en 'n'." },
+            { palabra: "martir", acentuada: "mártir", tipo: "grave", regla: "Grave: Llevan tilde porque NO terminan en 'n', 's' o vocal." },
+            { palabra: "piramide", acentuada: "pirámide", tipo: "esdrújula", regla: "Esdrújula: Siempre llevan tilde." },
+            { palabra: "interes", acentuada: "interés", tipo: "aguda", regla: "Aguda: Llevan tilde porque terminan en 's'." },
+            { palabra: "util", acentuada: "útil", tipo: "grave", regla: "Grave: Llevan tilde porque NO terminan en 'n', 's' o vocal." },
+            { palabra: "sabado", acentuada: "sábado", tipo: "esdrújula", regla: "Esdrújula: Siempre llevan tilde." },
+            { palabra: "atun", acentuada: "atún", tipo: "aguda", regla: "Aguda: Llevan tilde porque terminan en 'n'." },
+            { palabra: "crater", acentuada: "cráter", tipo: "grave", regla: "Grave: Llevan tilde porque NO terminan en 'n', 's' o vocal." },
+            { palabra: "pagina", acentuada: "página", tipo: "esdrújula", regla: "Esdrújula: Siempre llevan tilde." },
+            { palabra: "algun", acentuada: "algún", tipo: "aguda", regla: "Aguda: Llevan tilde porque terminan en 'n'." },
+            { palabra: "trebol", acentuada: "trébol", tipo: "grave", regla: "Grave: Llevan tilde porque NO terminan en 'n', 's' o vocal." },
+            { palabra: "numero", acentuada: "número", tipo: "esdrújula", regla: "Esdrújula: Siempre llevan tilde." },
+            { palabra: "leccion", acentuada: "lección", tipo: "aguda", regla: "Aguda: Llevan tilde porque terminan en 'n'." },
+            { palabra: "agil", acentuada: "ágil", tipo: "grave", regla: "Grave: Llevan tilde porque NO terminan en 'n', 's' o vocal." },
+            { palabra: "boligrafo", acentuada: "bolígrafo", tipo: "esdrújula", regla: "Esdrújula: Siempre llevan tilde." },
+            { palabra: "frances", acentuada: "francés", tipo: "aguda", regla: "Aguda: Llevan tilde porque terminan en 's'." },
+            { palabra: "lider", acentuada: "líder", tipo: "grave", regla: "Grave: Llevan tilde porque NO terminan en 'n', 's' o vocal." },
+            { palabra: "petalo", acentuada: "pétalo", tipo: "esdrújula", regla: "Esdrújula: Siempre llevan tilde." },
+            { palabra: "pantalon", acentuada: "pantalón", tipo: "aguda", regla: "Aguda: Llevan tilde porque terminan en 'n'." },
+            { palabra: "fertil", acentuada: "fértil", tipo: "grave", regla: "Grave: Llevan tilde porque NO terminan en 'n', 's' o vocal." },
+            { palabra: "helicoptero", acentuada: "helicóptero", tipo: "esdrújula", regla: "Esdrújula: Siempre llevan tilde." },
+            { palabra: "volcan", acentuada: "volcán", tipo: "aguda", regla: "Aguda: Llevan tilde porque terminan en 'n'." },
+            { palabra: "cesar", acentuada: "César", tipo: "grave", regla: "Grave: Llevan tilde porque NO terminan en 'n', 's' o vocal." },
+            { palabra: "fantastico", acentuada: "fantástico", tipo: "esdrújula", regla: "Esdrújula: Siempre llevan tilde." },
+            { palabra: "papa", acentuada: "papá", tipo: "aguda", regla: "Aguda: Llevan tilde porque terminan en vocal." },
+            { palabra: "dolar", acentuada: "dólar", tipo: "grave", regla: "Grave: Llevan tilde porque NO terminan en 'n', 's' o vocal." },
+            { palabra: "silaba", acentuada: "sílaba", tipo: "esdrújula", regla: "Esdrújula: Siempre llevan tilde." },
+            { palabra: "despues", acentuada: "después", tipo: "aguda", regla: "Aguda: Llevan tilde porque terminan en 's'." },
+            { palabra: "frijol", acentuada: "fríjol", tipo: "grave", regla: "Grave: Llevan tilde porque NO terminan en 'n', 's' o vocal." },
+            { palabra: "atomo", acentuada: "átomo", tipo: "esdrújula", regla: "Esdrújula: Siempre llevan tilde." },
+            { palabra: "tiburon", acentuada: "tiburón", tipo: "aguda", regla: "Aguda: Llevan tilde porque terminan en 'n'." },
+            { palabra: "nectar", acentuada: "néctar", tipo: "grave", regla: "Grave: Llevan tilde porque NO terminan en 'n', 's' o vocal." },
+            { palabra: "camara", acentuada: "cámara", tipo: "esdrújula", regla: "Esdrújula: Siempre llevan tilde." },
+            { palabra: "mama", acentuada: "mamá", tipo: "aguda", regla: "Aguda: Llevan tilde porque terminan en vocal." },
+            { palabra: "poster", acentuada: "póster", tipo: "grave", regla: "Grave: Llevan tilde porque NO terminan en 'n', 's' o vocal." },
+            { palabra: "cantaro", acentuada: "cántaro", tipo: "esdrújula", regla: "Esdrújula: Siempre llevan tilde." },
+            { palabra: "jardin", acentuada: "jardín", tipo: "aguda", regla: "Aguda: Llevan tilde porque terminan en 'n'." },
+            { palabra: "condor", acentuada: "cóndor", tipo: "grave", regla: "Grave: Llevan tilde porque NO terminan en 'n', 's' o vocal." },
+            { palabra: "gondola", acentuada: "góndola", tipo: "esdrújula", regla: "Esdrújula: Siempre llevan tilde." },
+            { palabra: "rubi", acentuada: "rubí", tipo: "aguda", regla: "Aguda: Llevan tilde porque terminan en vocal." },
+            { palabra: "movil", acentuada: "móvil", tipo: "grave", regla: "Grave: Llevan tilde porque NO terminan en 'n', 's' o vocal." },
+            { palabra: "hipopotamo", acentuada: "hipopótamo", tipo: "esdrújula", regla: "Esdrújula: Siempre llevan tilde." },
+            { palabra: "sillon", acentuada: "sillón", tipo: "aguda", regla: "Aguda: Llevan tilde porque terminan en 'n'." },
+            { palabra: "tandem", acentuada: "tándem", tipo: "grave", regla: "Grave: Llevan tilde porque NO terminan en 'n', 's' o vocal." },
+            { palabra: "heroe", acentuada: "héroe", tipo: "esdrújula", regla: "Esdrújula: Siempre llevan tilde." },
+            { palabra: "menu", acentuada: "menú", tipo: "aguda", regla: "Aguda: Llevan tilde porque terminan en vocal." },
+            { palabra: "album", acentuada: "álbum", tipo: "grave", regla: "Grave: Llevan tilde porque NO terminan en 'n', 's' o vocal." },
+            { palabra: "parrafo", acentuada: "párrafo", tipo: "esdrújula", regla: "Esdrújula: Siempre llevan tilde." },
+            { palabra: "ajonjoli", acentuada: "ajonjolí", tipo: "aguda", regla: "Aguda: Llevan tilde porque terminan en vocal." },
+            { palabra: "mastil", acentuada: "mástil", tipo: "grave", regla: "Grave: Llevan tilde porque NO terminan en 'n', 's' o vocal." },
+            { palabra: "peninsula", acentuada: "península", tipo: "esdrújula", regla: "Esdrújula: Siempre llevan tilde." },
+            { palabra: "capitan", acentuada: "capitán", tipo: "aguda", regla: "Aguda: Llevan tilde porque terminan en 'n'." },
+            { palabra: "huesped", acentuada: "huésped", tipo: "grave", regla: "Grave: Llevan tilde porque NO terminan en 'n', 's' o vocal." },
+            { palabra: "plastico", acentuada: "plástico", tipo: "esdrújula", regla: "Esdrújula: Siempre llevan tilde." },
+            { palabra: "bambu", acentuada: "bambú", tipo: "aguda", regla: "Aguda: Llevan tilde porque terminan en vocal." },
+            { palabra: "femenino", acentuada: "femenino", tipo: "grave", regla: "Grave: NO llevan tilde porque terminan en vocal." },
+            { palabra: "septimo", acentuada: "séptimo", tipo: "esdrújula", regla: "Esdrújula: Siempre llevan tilde." },
+            { palabra: "aleman", acentuada: "alemán", tipo: "aguda", regla: "Aguda: Llevan tilde porque terminan en 'n'." },
+            { palabra: "torax", acentuada: "tórax", tipo: "grave", regla: "Grave: Llevan tilde porque NO terminan en 'n', 's' o vocal." },
+            { palabra: "zocalo", acentuada: "zócalo", tipo: "esdrújula", regla: "Esdrújula: Siempre llevan tilde." },
+            { palabra: "debil", acentuada: "débil", tipo: "grave", regla: "Grave: Llevan tilde porque NO terminan en 'n', 's' o vocal." },
+            { palabra: "almacen", acentuada: "almacén", tipo: "aguda", regla: "Aguda: Llevan tilde porque terminan en 'n'." },
+            { palabra: "fosil", acentuada: "fósil", tipo: "grave", regla: "Grave: Llevan tilde porque NO terminan en 'n', 's' o vocal." },
+            { palabra: "termometro", acentuada: "termómetro", tipo: "esdrújula", regla: "Esdrújula: Siempre llevan tilde." },
+            { palabra: "autobus", acentuada: "autobús", tipo: "aguda", regla: "Aguda: Llevan tilde porque terminan en 's'." },
+            { palabra: "futbol", acentuada: "fútbol", tipo: "grave", regla: "Grave: Llevan tilde porque NO terminan en 'n', 's' o vocal." },
+            { palabra: "oceano", acentuada: "océano", tipo: "esdrújula", regla: "Esdrújula: Siempre llevan tilde." },
+            { palabra: "betun", acentuada: "betún", tipo: "aguda", regla: "Aguda: Llevan tilde porque terminan en 'n'." },
+            { palabra: "reportero", acentuada: "reportero", tipo: "grave", regla: "Grave: NO llevan tilde porque terminan en vocal." },
+            { palabra: "cuadriceps", acentuada: "cuádriceps", tipo: "esdrújula", regla: "Esdrújula: Siempre llevan tilde." },
+            { palabra: "colibri", acentuada: "colibrí", tipo: "aguda", regla: "Aguda: Llevan tilde porque terminan en vocal." },
+            { palabra: "martes", acentuada: "martes", tipo: "grave", regla: "Grave: NO llevan tilde porque terminan en 's'." },
+            { palabra: "cetaceo", acentuada: "cetáceo", tipo: "esdrújula", regla: "Esdrújula: Siempre llevan tilde." },
+            { palabra: "estan", acentuada: "están", tipo: "aguda", regla: "Aguda: Llevan tilde porque terminan en 'n'." },
+            { palabra: "examen", acentuada: "examen", tipo: "grave", regla: "Grave: NO llevan tilde porque terminan en 'n'." },
+            { palabra: "geografico", acentuada: "geográfico", tipo: "esdrújula", regla: "Esdrújula: Siempre llevan tilde." },
+            { palabra: "hindu", acentuada: "hindú", tipo: "aguda", regla: "Aguda: Llevan tilde porque terminan en vocal." },
+            { palabra: "volumen", acentuada: "volumen", tipo: "grave", regla: "Grave: NO llevan tilde porque terminan en 'n'." },
+            { palabra: "historia", acentuada: "historia", tipo: "grave", regla: "Grave: NO llevan tilde porque terminan en vocal." },
+            { palabra: "logica", acentuada: "lógica", tipo: "esdrújula", regla: "Esdrújula: Siempre llevan tilde." },
+            { palabra: "iglu", acentuada: "iglú", tipo: "aguda", regla: "Aguda: Llevan tilde porque terminan en vocal." },
+            { palabra: "imagen", acentuada: "imagen", tipo: "grave", regla: "Grave: NO llevan tilde porque terminan en 'n'." },
+            { palabra: "maximo", acentuada: "máximo", tipo: "esdrújula", regla: "Esdrújula: Siempre llevan tilde." },
+            { palabra: "jabali", acentuada: "jabalí", tipo: "aguda", regla: "Aguda: Llevan tilde porque terminan en vocal." },
+            { palabra: "joven", acentuada: "joven", tipo: "grave", regla: "Grave: NO llevan tilde porque terminan en 'n'." },
+            { palabra: "medico", acentuada: "médico", tipo: "esdrújula", regla: "Esdrújula: Siempre llevan tilde." },
+            { palabra: "limon", acentuada: "limón", tipo: "aguda", regla: "Aguda: Llevan tilde porque terminan en 'n'." },
+            { palabra: "lunes", acentuada: "lunes", tipo: "grave", regla: "Grave: NO llevan tilde porque terminan en 's'." },
+            { palabra: "metodo", acentuada: "método", tipo: "esdrújula", regla: "Esdrújula: Siempre llevan tilde." },
+            { palabra: "mani", acentuada: "maní", tipo: "aguda", regla: "Aguda: Llevan tilde porque terminan en vocal." },
+            { palabra: "origen", acentuada: "origen", tipo: "grave", regla: "Grave: NO llevan tilde porque terminan en 'n'." },
+            { palabra: "minimo", acentuada: "mínimo", tipo: "esdrújula", regla: "Esdrújula: Siempre llevan tilde." },
+            { palabra: "moscu", acentuada: "Moscú", tipo: "aguda", regla: "Aguda: Llevan tilde porque terminan en vocal." },
+            { palabra: "orden", acentuada: "orden", tipo: "grave", regla: "Grave: NO llevan tilde porque terminan en 'n'." },
+            { palabra: "optimo", acentuada: "óptimo", tipo: "esdrújula", regla: "Esdrújula: Siempre llevan tilde." },
+            { palabra: "patin", acentuada: "patín", tipo: "aguda", regla: "Aguda: Llevan tilde porque terminan en 'n'." },
+            { palabra: "pesa", acentuada: "pesa", tipo: "grave", regla: "Grave: NO llevan tilde porque terminan en vocal." },
+            { palabra: "oxido", acentuada: "óxido", tipo: "esdrújula", regla: "Esdrújula: Siempre llevan tilde." },
+            { palabra: "raton", acentuada: "ratón", tipo: "aguda", regla: "Aguda: Llevan tilde porque terminan en 'n'." },
+            { palabra: "resumen", acentuada: "resumen", tipo: "grave", regla: "Grave: NO llevan tilde porque terminan en 'n'." },
+            { palabra: "pildora", acentuada: "píldora", tipo: "esdrújula", regla: "Esdrújula: Siempre llevan tilde." },
+            { palabra: "reves", acentuada: "revés", tipo: "aguda", regla: "Aguda: Llevan tilde porque terminan en 's'." },
+            { palabra: "zapato", acentuada: "zapato", tipo: "grave", regla: "Grave: NO llevan tilde porque terminan en vocal." },
+            { palabra: "quimica", acentuada: "química", tipo: "esdrújula", regla: "Esdrújula: Siempre llevan tilde." },
+            { palabra: "rincon", acentuada: "rincón", tipo: "aguda", regla: "Aguda: Llevan tilde porque terminan en 'n'." },
+            { palabra: "record", acentuada: "récord", tipo: "grave", regla: "Grave: Llevan tilde porque NO terminan en 'n', 's' o vocal." },
+            { palabra: "romantico", acentuada: "romántico", tipo: "esdrújula", regla: "Esdrújula: Siempre llevan tilde." },
+            { palabra: "salmon", acentuada: "salmón", tipo: "aguda", regla: "Aguda: Llevan tilde porque terminan en 'n'." },
+            { palabra: "rimel", acentuada: "rímel", tipo: "grave", regla: "Grave: Llevan tilde porque NO terminan en 'n', 's' o vocal." },
+            { palabra: "satelite", acentuada: "satélite", tipo: "esdrújula", regla: "Esdrújula: Siempre llevan tilde." },
+            { palabra: "television", acentuada: "televisión", tipo: "aguda", regla: "Aguda: Llevan tilde porque terminan en 'n'." },
+            { palabra: "river", acentuada: "ríver", tipo: "grave", regla: "Grave: Llevan tilde porque NO terminan en 'n', 's' o vocal." },
+            { palabra: "simpatico", acentuada: "simpático", tipo: "esdrújula", regla: "Esdrújula: Siempre llevan tilde." },
+            { palabra: "tendra", acentuada: "tendrá", tipo: "aguda", regla: "Aguda: Llevan tilde porque terminan en vocal." },
+            { palabra: "sueter", acentuada: "suéter", tipo: "grave", regla: "Grave: Llevan tilde porque NO terminan en 'n', 's' o vocal." },
+            { palabra: "tecnico", acentuada: "técnico", tipo: "esdrújula", regla: "Esdrújula: Siempre llevan tilde." },
+            { palabra: "violin", acentuada: "violín", tipo: "aguda", regla: "Aguda: Llevan tilde porque terminan en 'n'." },
+            { palabra: "taxi", acentuada: "taxi", tipo: "grave", regla: "Grave: NO llevan tilde porque terminan en vocal." },
+            { palabra: "timido", acentuada: "tímido", tipo: "esdrújula", regla: "Esdrújula: Siempre llevan tilde." },
+            { palabra: "vivira", acentuada: "vivirá", tipo: "aguda", regla: "Aguda: Llevan tilde porque terminan en vocal." },
+            { palabra: "textil", acentuada: "textil", tipo: "aguda", regla: "Aguda: NO llevan tilde porque NO terminan en 'n', 's' o vocal." },
+            { palabra: "titulo", acentuada: "título", tipo: "esdrújula", regla: "Esdrújula: Siempre llevan tilde." },
+            { palabra: "champu", acentuada: "champú", tipo: "aguda", regla: "Aguda: Llevan tilde porque terminan en vocal." },
+            { palabra: "vater", acentuada: "váter", tipo: "grave", regla: "Grave: Llevan tilde porque NO terminan en 'n', 's' o vocal." },
+            { palabra: "ultimo", acentuada: "último", tipo: "esdrújula", regla: "Esdrújula: Siempre llevan tilde." },
+            { palabra: "volvio", acentuada: "volvió", tipo: "aguda", regla: "Aguda: Llevan tilde porque terminan en vocal." },
+            { palabra: "victima", acentuada: "víctima", tipo: "esdrújula", regla: "Esdrújula: Siempre llevan tilde." },
+            { palabra: "crisis", acentuada: "crisis", tipo: "grave", regla: "Grave: NO llevan tilde porque terminan en 's'." },
+            { palabra: "vertigo", acentuada: "vértigo", tipo: "esdrújula", regla: "Esdrújula: Siempre llevan tilde." },
+            { palabra: "jamas", acentuada: "jamás", tipo: "aguda", regla: "Aguda: Llevan tilde porque terminan en 's'." },
+        ];
+
+        // --- VARIABLES GLOBALES ---
+        let currentWord = null;
+        let currentMode = 0; // 1 para acentuar, 2 para clasificar
+
+        // --- ELEMENTOS DEL DOM ---
+        const menuScreen = document.getElementById('menu-screen');
+        const gameScreen = document.getElementById('game-screen');
+        const gameModeTitle = document.getElementById('game-mode-title');
+        const wordDisplay = document.getElementById('word-display');
+        const inputContainer = document.getElementById('input-container');
+        const feedbackContainer = document.getElementById('feedback-container');
+        const nextWordBtn = document.getElementById('next-word-btn');
+
+        // --- FUNCIONES DEL JUEGO ---
+
+        /**
+         * Inicia el juego en el modo seleccionado.
+         * @param {number} mode - El modo de juego (1 o 2).
+         */
+        function startGame(mode) {
+            currentMode = mode;
+            menuScreen.classList.add('hidden');
+            gameScreen.classList.remove('hidden');
+            gameModeTitle.textContent = mode === 1 ? 'Modo: Acentuar la palabra' : 'Modo: Clasificar la palabra';
+            nextWord();
+        }
+
+        /**
+         * Selecciona una nueva palabra y prepara la interfaz.
+         */
+        function nextWord() {
+            // Seleccionar una palabra aleatoria de la lista
+            const randomIndex = Math.floor(Math.random() * palabras.length);
+            currentWord = palabras[randomIndex];
+
+            // Limpiar la interfaz
+            feedbackContainer.innerHTML = '';
+            inputContainer.innerHTML = '';
+            nextWordBtn.classList.add('hidden');
+
+            // Configurar la interfaz según el modo de juego
+            if (currentMode === 1) {
+                setupMode1();
+            } else {
+                setupMode2();
+            }
+        }
+
+        /**
+         * Configura la interfaz para el Modo 1 (Acentuar).
+         */
+        function setupMode1() {
+            wordDisplay.textContent = currentWord.palabra;
+            inputContainer.innerHTML = `
+                <input type="text" id="word-input" class="w-full max-w-sm text-center text-2xl p-3 border-2 border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500" placeholder="Escribe aquí...">
+                <button onclick="checkAnswerMode1()" id="submit-btn" class="btn mt-4 bg-blue-500 text-white font-bold py-3 px-8 rounded-lg text-lg hover:bg-blue-600">Enviar</button>
+            `;
+            // Permitir enviar con la tecla Enter
+            document.getElementById('word-input').addEventListener('keyup', function(event) {
+                if (event.key === 'Enter') {
+                    checkAnswerMode1();
+                }
+            });
+        }
+
+        /**
+         * Configura la interfaz para el Modo 2 (Clasificar).
+         */
+        function setupMode2() {
+            wordDisplay.textContent = currentWord.acentuada;
+            inputContainer.innerHTML = `
+                <div class="flex flex-wrap justify-center gap-4">
+                    <button onclick="checkAnswerMode2('aguda')" class="btn choice-btn bg-red-500 text-white font-bold py-3 px-8 rounded-lg text-lg hover:bg-red-600">Aguda</button>
+                    <button onclick="checkAnswerMode2('grave')" class="btn choice-btn bg-yellow-500 text-white font-bold py-3 px-8 rounded-lg text-lg hover:bg-yellow-600">Grave</button>
+                    <button onclick="checkAnswerMode2('esdrújula')" class="btn choice-btn bg-purple-500 text-white font-bold py-3 px-8 rounded-lg text-lg hover:bg-purple-600">Esdrújula</button>
+                </div>
+            `;
+        }
+
+        /**
+         * Verifica la respuesta para el Modo 1.
+         */
+        function checkAnswerMode1() {
+            const userInput = document.getElementById('word-input').value.trim().toLowerCase();
+            const correctAnswer = currentWord.acentuada.toLowerCase();
+            const isCorrect = userInput === correctAnswer;
+            showFeedback(isCorrect);
+            document.getElementById('word-input').disabled = true;
+            document.getElementById('submit-btn').disabled = true;
+            document.getElementById('submit-btn').classList.add('opacity-50', 'cursor-not-allowed');
+        }
+
+        /**
+         * Verifica la respuesta para el Modo 2.
+         * @param {string} userChoice - La clasificación elegida por el usuario.
+         */
+        function checkAnswerMode2(userChoice) {
+            const isCorrect = userChoice === currentWord.tipo;
+            showFeedback(isCorrect);
+            // Deshabilitar todos los botones de elección
+            document.querySelectorAll('.choice-btn').forEach(btn => {
+                btn.disabled = true;
+                btn.classList.add('opacity-50', 'cursor-not-allowed');
+            });
+        }
+
+        /**
+         * Muestra la retroalimentación (correcto/incorrecto).
+         * @param {boolean} isCorrect - Si la respuesta fue correcta.
+         */
+        function showFeedback(isCorrect) {
+            let feedbackHTML = '';
+            if (isCorrect) {
+                feedbackHTML = `
+                    <div class="flex flex-col items-center">
+                        <svg class="feedback-icon text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+                        <p class="text-2xl font-bold text-green-600 mt-2">¡Correcto!</p>
+                    </div>
+                `;
+            } else {
+                feedbackHTML = `
+                    <div class="flex flex-col items-center">
+                        <svg class="feedback-icon text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2m7-2a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+                        <p class="text-2xl font-bold text-red-600 mt-2">¡Incorrecto!</p>
+                        <p class="text-gray-700 text-lg mt-2">La respuesta correcta es: <strong class="text-blue-600">${currentWord.acentuada}</strong></p>
+                        <p class="text-gray-600 text-md mt-1">${currentWord.regla}</p>
+                    </div>
+                `;
+            }
+            feedbackContainer.innerHTML = feedbackHTML;
+            nextWordBtn.classList.remove('hidden');
+        }
+
+        /**
+         * Vuelve a la pantalla del menú principal.
+         */
+        function showMenu() {
+            gameScreen.classList.add('hidden');
+            menuScreen.classList.remove('hidden');
+            currentMode = 0;
+            currentWord = null;
+        }
+
+    </script>
+</body>
+</html>
